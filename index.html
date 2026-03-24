@@ -1,33 +1,125 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" id="main-html">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GLP - تسجيل الدخول</title>
+    <title>OKX Pro | GLP Trading</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .login-box { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 100%; max-width: 360px; text-align: center; }
-        .login-box h1 { color: #1877f2; font-size: 32px; margin-bottom: 20px; font-weight: bold; }
-        .login-box input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #dddfe2; border-radius: 6px; font-size: 14px; }
-        .login-box button { width: 100%; padding: 12px; background-color: #1877f2; border: none; border-radius: 6px; color: #fff; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .login-box button:hover { background-color: #166fe5; }
-        .footer-links { margin-top: 15px; font-size: 13px; color: #1877f2; text-decoration: none; display: block; }
-        hr { margin: 20px 0; border: 0; border-top: 1px solid #dadde1; }
-        .create-btn { background-color: #42b72a; padding: 10px; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 14px; }
+        :root { --okx-black: #000000; --okx-gray: #1a1a1a; --okx-blue: #0052ff; --okx-text: #ffffff; }
+        body { background-color: var(--okx-black); color: white; font-family: sans-serif; margin: 0; overflow: hidden; }
+        
+        /* تصميم صفحة الدخول */
+        #auth-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--okx-black); z-index: 2000; display: flex; justify-content: center; align-items: center;
+        }
+        .auth-card {
+            background: var(--okx-gray); padding: 40px; border-radius: 16px; width: 350px; text-align: center;
+            border: 1px solid #333;
+        }
+        input {
+            width: 100%; padding: 12px; margin: 8px 0; background: #000; border: 1px solid #444;
+            color: white; border-radius: 8px; box-sizing: border-box;
+        }
+        .btn-main {
+            width: 100%; padding: 12px; background: white; color: black; border: none;
+            border-radius: 25px; font-weight: bold; cursor: pointer; margin-top: 15px;
+        }
+        .toggle-link { color: #888; font-size: 13px; cursor: pointer; display: block; margin-top: 15px; }
+
+        /* تصميم المنصة */
+        #dashboard { display: none; }
+        nav { height: 60px; border-bottom: 1px solid #333; display: flex; align-items: center; padding: 0 20px; justify-content: space-between; }
+        .main-grid { display: grid; grid-template-columns: 1fr 300px; height: calc(100vh - 60px); }
     </style>
 </head>
 <body>
-    <div class="login-box">
-        <h1>GLP</h1>
-        <form>
-            <input type="text" placeholder="البريد الإلكتروني أو رقم الهاتف" required>
-            <input type="password" placeholder="كلمة السر" required>
-            <button type="submit">تسجيل الدخول</button>
-        </form>
-        <a href="#" class="footer-links">هل نسيت كلمة السر؟</a>
-        <hr>
-        <a href="#" class="create-btn">إنشاء حساب جديد</a>
+
+<div id="auth-container">
+    <div class="auth-card">
+        <h2 id="auth-title">Log In</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button class="btn-main" id="auth-btn" onclick="handleAuth()">Continue</button>
+        <span class="toggle-link" id="toggle-auth" onclick="toggleMode()">Don't have an account? Sign Up</span>
     </div>
+</div>
+
+<div id="dashboard">
+    <nav>
+        <div style="display:flex; gap:20px; align-items:center;">
+            <b style="font-size:22px;">OKX <span style="font-weight:100">GLP</span></b>
+            <select onchange="changeLang(this.value)" style="background:#222; color:white; border:none; padding:5px;">
+                <option value="en">English</option>
+                <option value="ar">العربية</option>
+                <option value="tr">Türkçe</option>
+            </select>
+        </div>
+        <button onclick="logout()" style="background:none; border:1px solid #444; color:white; cursor:pointer; padding:5px 15px; border-radius:15px;">Logout</button>
+    </nav>
+    <div class="main-grid">
+        <div id="tv_chart"></div>
+        <div style="border-left:1px solid #333;" id="tv_analysis"></div>
+    </div>
+</div>
+
+<script>
+    // ⚠️ استبدل هذه الإعدادات ببيانات مشروعك في Firebase
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_ID",
+        appId: "YOUR_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    let isSignUp = false;
+
+    function toggleMode() {
+        isSignUp = !isSignUp;
+        document.getElementById('auth-title').innerText = isSignUp ? "Sign Up" : "Log In";
+        document.getElementById('toggle-auth').innerText = isSignUp ? "Already have account? Log In" : "Don't have account? Sign Up";
+    }
+
+    async function handleAuth() {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
+        try {
+            if (isSignUp) {
+                await firebase.auth().createUserWithEmailAndPassword(email, pass);
+                alert("Account Created!");
+            } else {
+                await firebase.auth().signInWithEmailAndPassword(email, pass);
+            }
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+
+    firebase.auth().onAuthStateChanged(user => {
+        if (user) {
+            document.getElementById('auth-container').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            loadCharts();
+        } else {
+            document.getElementById('auth-container').style.display = 'flex';
+            document.getElementById('dashboard').style.display = 'none';
+        }
+    });
+
+    function logout() { firebase.auth().signOut(); }
+
+    function loadCharts() {
+        new TradingView.widget({
+            "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "D", "theme": "dark",
+            "style": "1", "locale": "en", "container_id": "tv_chart"
+        });
+    }
+</script>
+<script src="https://s3.tradingview.com/tv.js"></script>
 </body>
 </html>

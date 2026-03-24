@@ -90,10 +90,8 @@
         measurementId: "G-4FPROIRT77"
     };
 ‏
-‏// Initialize Firebase
-‏const app = initializeApp(firebaseConfig);
-‏const analytics = getAnalytics(app);
-    firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(firebaseConfig);
+    
 
     const translations = {
         en: { login: "Log In", signup: "Sign Up", toggleLogin: "Already have account? Log In", toggleSignup: "Don't have account? Sign Up", logout: "Logout", dir: "ltr" },

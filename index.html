@@ -10,7 +10,6 @@
         :root { --okx-black: #000000; --okx-gray: #1a1a1a; --okx-blue: #0052ff; --okx-text: #ffffff; }
         body { background-color: var(--okx-black); color: white; font-family: sans-serif; margin: 0; overflow: hidden; }
         
-        /* تصميم صفحة الدخول */
         #auth-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--okx-black); z-index: 2000; display: flex; justify-content: center; align-items: center;
@@ -29,10 +28,14 @@
         }
         .toggle-link { color: #888; font-size: 13px; cursor: pointer; display: block; margin-top: 15px; }
 
-        /* تصميم المنصة */
         #dashboard { display: none; }
         nav { height: 60px; border-bottom: 1px solid #333; display: flex; align-items: center; padding: 0 20px; justify-content: space-between; }
         .main-grid { display: grid; grid-template-columns: 1fr 300px; height: calc(100vh - 60px); }
+        
+        @media (max-width: 768px) {
+            .main-grid { grid-template-columns: 1fr; }
+            #tv_analysis { display: none; }
+        }
     </style>
 </head>
 <body>
@@ -51,47 +54,73 @@
     <nav>
         <div style="display:flex; gap:20px; align-items:center;">
             <b style="font-size:22px;">OKX <span style="font-weight:100">GLP</span></b>
-            <select onchange="changeLang(this.value)" style="background:#222; color:white; border:none; padding:5px;">
+            <select id="lang-select" onchange="changeLang(this.value)" style="background:#222; color:white; border:1px solid #444; padding:5px; border-radius:5px;">
                 <option value="en">English</option>
                 <option value="ar">العربية</option>
                 <option value="tr">Türkçe</option>
             </select>
         </div>
-        <button onclick="logout()" style="background:none; border:1px solid #444; color:white; cursor:pointer; padding:5px 15px; border-radius:15px;">Logout</button>
+        <button onclick="logout()" id="logout-btn" style="background:none; border:1px solid #444; color:white; cursor:pointer; padding:5px 15px; border-radius:15px;">Logout</button>
     </nav>
     <div class="main-grid">
-        <div id="tv_chart"></div>
-        <div style="border-left:1px solid #333;" id="tv_analysis"></div>
+        <div id="tv_chart" style="height: 100%;"></div>
+        <div id="tv_analysis" style="border-left:1px solid #333; height: 100%;"></div>
     </div>
 </div>
 
+<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script>
-    // ⚠️ استبدل هذه الإعدادات ببيانات مشروعك في Firebase
+    // بيانات Firebase الخاصة بك يا علوش
     const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT.appspot.com",
-        messagingSenderId: "YOUR_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyBTWc76qULyQkQEGvp8p3SpX88GEU",
+        authDomain: "glp-trading.firebaseapp.com",
+        projectId: "glp-trading",
+        storageBucket: "glp-trading.firebasestorage.app",
+        messagingSenderId: "765235054069",
+        appId: "1:765235054069:web:c38941a16531e55d6"
     };
     firebase.initializeApp(firebaseConfig);
 
+    const translations = {
+        en: { login: "Log In", signup: "Sign Up", toggleLogin: "Already have account? Log In", toggleSignup: "Don't have account? Sign Up", logout: "Logout", dir: "ltr" },
+        ar: { login: "تسجيل الدخول", signup: "إنشاء حساب", toggleLogin: "لديك حساب بالفعل؟ دخول", toggleSignup: "ليس لديك حساب؟ سجل الآن", logout: "خروج", dir: "rtl" },
+        tr: { login: "Giriş Yap", signup: "Kayıt Ol", toggleLogin: "Hesabınız var mı? Giriş", toggleSignup: "Hesabınız yok mu? Kayıt", logout: "Çıkış Yap", dir: "ltr" }
+    };
+
     let isSignUp = false;
+    let currentLang = 'en';
 
     function toggleMode() {
         isSignUp = !isSignUp;
-        document.getElementById('auth-title').innerText = isSignUp ? "Sign Up" : "Log In";
-        document.getElementById('toggle-auth').innerText = isSignUp ? "Already have account? Log In" : "Don't have account? Sign Up";
+        updateAuthUI();
+    }
+
+    function updateAuthUI() {
+        const t = translations[currentLang];
+        document.getElementById('auth-title').innerText = isSignUp ? t.signup : t.login;
+        document.getElementById('toggle-auth').innerText = isSignUp ? t.toggleLogin : t.toggleSignup;
+        document.getElementById('auth-btn').innerText = isSignUp ? t.signup : t.login;
+    }
+
+    function changeLang(lang) {
+        currentLang = lang;
+        document.getElementById('main-html').dir = translations[lang].dir;
+        document.getElementById('logout-btn').innerText = translations[lang].logout;
+        updateAuthUI();
+        if (firebase.auth().currentUser) {
+            loadCharts(); // إعادة تحميل الشارت باللغة الجديدة
+        }
     }
 
     async function handleAuth() {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('password').value;
+        if(!email || !pass) return alert("Please fill all fields");
+        
         try {
             if (isSignUp) {
                 await firebase.auth().createUserWithEmailAndPassword(email, pass);
-                alert("Account Created!");
+                alert("Account Created successfully!");
             } else {
                 await firebase.auth().signInWithEmailAndPassword(email, pass);
             }
@@ -114,12 +143,7 @@
     function logout() { firebase.auth().signOut(); }
 
     function loadCharts() {
+        // الشارت الرئيسي
         new TradingView.widget({
-            "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "D", "theme": "dark",
-            "style": "1", "locale": "en", "container_id": "tv_chart"
-        });
-    }
-</script>
-<script src="https://s3.tradingview.com/tv.js"></script>
-</body>
-</html>
+            "autosize": true,
+            "symbol":
